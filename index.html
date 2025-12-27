@@ -105,8 +105,7 @@
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6bnRpYWpkaXZuYWRtYXhxYnl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY3MTAzMDYsImV4cCI6MjA4MjI4NjMwNn0.Sk6SUIeBoJ_iNggUw668WK4n5y6XWS0kXrL3czkKre0';
     const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
     let currentUser = null;
-    // Auto-initialize for demo
-window.addEventListener('load', async () => { currentUser = { id: 'demo' }; showSection('clients'); loadData(); });
+    setTimeout(() => { currentUser = {id:'demo'}; showSection('clients'); loadData(); }, 100);
 
     async function login() {
       const email = document.getElementById('email').value;
