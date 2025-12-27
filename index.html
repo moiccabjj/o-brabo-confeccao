@@ -20,6 +20,8 @@
     table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }
     table th, table td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
     table th { background: #f9f9f9; font-weight: bold; }
+    .error { color: red; padding: 10px; margin: 10px 0; border: 1px solid red; border-radius: 5px; }
+    .success { color: green; padding: 10px; margin: 10px 0; border: 1px solid green; border-radius: 5px; }
   </style>
 </head>
 <body>
@@ -36,13 +38,14 @@
 
     <div id="auth" class="section active">
       <h2>Login</h2>
+      <div id="loginMessage"></div>
       <div class="form-group">
         <label>Email:</label>
-        <input type="email" id="email" placeholder="seu@email.com">
+        <input type="email" id="email" placeholder="seu@email.com" value="brabo@test.com">
       </div>
       <div class="form-group">
         <label>Senha:</label>
-        <input type="password" id="password" placeholder="Sua senha">
+        <input type="password" id="password" placeholder="Sua senha" value="Brabo@123">
       </div>
       <button class="btn" onclick="login()">Fazer Login</button>
     </div>
@@ -105,13 +108,26 @@
     async function login() {
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (!error) {
-        currentUser = data.user;
-        showSection('clients');
-        loadData();
-      } else {
-        alert('Erro: ' + error.message);
+      const messageDiv = document.getElementById('loginMessage');
+      
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        
+        if (error) {
+          messageDiv.innerHTML = '<div class="error">Erro: ' + error.message + '</div>';
+          console.error('Login error:', error);
+          return;
+        }
+
+        if (data && data.user) {
+          currentUser = data.user;
+          messageDiv.innerHTML = '<div class="success">Login realizado com sucesso!</div>';
+          showSection('clients');
+          loadData();
+        }
+      } catch (err) {
+        messageDiv.innerHTML = '<div class="error">Erro: ' + err.message + '</div>';
+        console.error('Exception:', err);
       }
     }
 
@@ -119,6 +135,7 @@
       await supabase.auth.signOut();
       currentUser = null;
       showSection('auth');
+      document.getElementById('loginMessage').innerHTML = '';
     }
 
     function showSection(sectionId) {
@@ -129,7 +146,7 @@
     async function addClient() {
       const name = document.getElementById('clientName').value;
       if (!name || !currentUser) return;
-      const { error } = await supabase.from('clients').insert([{ name, user_id: currentUser.id }]);
+      const { error } = await supabase.from('clients').insert([{ name }]);
       if (!error) {
         document.getElementById('clientName').value = '';
         loadClients();
@@ -140,7 +157,7 @@
       const name = document.getElementById('productName').value;
       const price = parseFloat(document.getElementById('productPrice').value);
       if (!name || !price || !currentUser) return;
-      const { error } = await supabase.from('products').insert([{ name, price, user_id: currentUser.id }]);
+      const { error } = await supabase.from('products').insert([{ name, price }]);
       if (!error) {
         document.getElementById('productName').value = '';
         document.getElementById('productPrice').value = '';
@@ -151,42 +168,42 @@
     async function addOrder() {
       const clientId = document.getElementById('orderClient').value;
       if (!clientId || !currentUser) return;
-      const { error } = await supabase.from('orders').insert([{ client_id: clientId, user_id: currentUser.id, status: 'pendente', total: 0 }]);
+      const { error } = await supabase.from('orders').insert([{ client_id: clientId, status: 'pendente', total: 0 }]);
       if (!error) loadOrders();
     }
 
     async function loadClients() {
       if (!currentUser) return;
-      const { data } = await supabase.from('clients').select('*').eq('user_id', currentUser.id);
+      const { data } = await supabase.from('clients').select('*');
       const html = (data || []).map(c => `<tr><td>${c.id}</td><td>${c.name}</td><td><button class="btn btn-danger" onclick="deleteClient(${c.id})">Excluir</button></td></tr>`).join('');
       document.getElementById('clientsList').innerHTML = html;
     }
 
     async function loadProducts() {
       if (!currentUser) return;
-      const { data } = await supabase.from('products').select('*').eq('user_id', currentUser.id);
+      const { data } = await supabase.from('products').select('*');
       const html = (data || []).map(p => `<tr><td>${p.id}</td><td>${p.name}</td><td>R$ ${p.price.toFixed(2)}</td><td><button class="btn btn-danger" onclick="deleteProduct(${p.id})">Excluir</button></td></tr>`).join('');
       document.getElementById('productsList').innerHTML = html;
     }
 
     async function loadOrders() {
       if (!currentUser) return;
-      const { data } = await supabase.from('orders').select('*').eq('user_id', currentUser.id);
+      const { data } = await supabase.from('orders').select('*');
       const html = (data || []).map(o => `<tr><td>${o.id}</td><td>${o.client_id}</td><td>${o.status}</td><td>R$ ${(o.total || 0).toFixed(2)}</td><td><button class="btn btn-danger" onclick="deleteOrder(${o.id})">Excluir</button></td></tr>`).join('');
       document.getElementById('ordersList').innerHTML = html;
     }
 
     async function loadProduction() {
       if (!currentUser) return;
-      const { data } = await supabase.from('production').select('*').eq('user_id', currentUser.id);
+      const { data } = await supabase.from('production').select('*');
       const html = (data || []).map(p => `<tr><td>${p.id}</td><td>${p.order_id}</td><td>${p.stage}</td><td>${p.status}</td><td><button class="btn" onclick="updateProduction(${p.id})">Atualizar</button></td></tr>`).join('');
       document.getElementById('productionList').innerHTML = html;
     }
 
     async function loadFinance() {
       if (!currentUser) return;
-      const { data: receivables } = await supabase.from('receivables').select('*').eq('user_id', currentUser.id);
-      const { data: payables } = await supabase.from('payables').select('*').eq('user_id', currentUser.id);
+      const { data: receivables } = await supabase.from('receivables').select('*');
+      const { data: payables } = await supabase.from('payables').select('*');
       document.getElementById('receivablesList').innerHTML = (receivables || []).map(r => `<tr><td>${r.id}</td><td>${r.order_id}</td><td>R$ ${(r.amount || 0).toFixed(2)}</td><td>${r.status}</td></tr>`).join('');
       document.getElementById('payablesList').innerHTML = (payables || []).map(p => `<tr><td>${p.id}</td><td>${p.description}</td><td>R$ ${(p.amount || 0).toFixed(2)}</td><td>${p.status}</td></tr>`).join('');
     }
